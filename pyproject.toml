@@ -1,0 +1,80 @@
+[build-system]
+requires = ["setuptools>=41", "wheel", "setuptools-git-versioning<2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "epub-simplifier"
+authors = [{ name = "Anatolii Bubenkov", email = "bubenkoff@gmail.com" }]
+description = "A command-line tool to simplify language in EPUB books"
+readme = "README.md"
+requires-python = ">=3.8"
+keywords = ["epub", "language", "simplification", "tool"]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+]
+dependencies = [
+  "EbookLib>=0.17.1",
+  "openai>=0.2.6",
+  "progress>=1.6",
+  "markdownify>=0.11.6",
+  "markdown2>=2.4.13",
+  "tenacity>=8.2.3",
+  "tiktoken>=0.1.1",
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+dev = [
+  "black",
+  "flake8-pyproject",
+  "flake8",
+  "pytest",
+  "pytest-asyncio",
+  "pytest-mock",
+  "pytest-cov",
+  "build",
+  "twine",
+]
+
+[project.scripts]
+epub-simplify = "epub_simplifier.simplifier:main"
+
+[project.urls]
+Repository = "https://github.com/bubenkoff/epub-simplifier.git"
+Issues = "https://github.com/bubenkoff/epub-simplifier/issues"
+
+[tool.black]
+line-length = 127
+target-version = ['py37']
+include = '\.pyi?$'
+exclude = '''
+
+(
+  /(
+      \.eggs         # exclude a few common directories in the
+    | \.git          # root of the project
+    | \.hg
+    | \.mypy_cache
+    | \.tox
+    | \.env
+    | \.venv
+    | _build
+    | buck-out
+    | build
+    | dist
+  )/
+)
+'''
+
+[tool.flake8]
+max-line-length = 127
+exclude = '.git,__pycache__,build,dist,.env'
+
+[tool.coverage.run]
+relative_files = true
+
+[tool.setuptools-git-versioning]
+enabled = true
