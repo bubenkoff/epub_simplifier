@@ -10,7 +10,7 @@ export
 
 # install all needed for development
 develop: .env
-	pip install -e .[dev]
+	pip install -U --upgrade-strategy eager -e .[dev]
 
 # run the tests
 test:

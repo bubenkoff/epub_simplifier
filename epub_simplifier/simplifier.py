@@ -65,7 +65,7 @@ def dechunkify_text(chunks, separator):
 
 
 @retry(**wait_arguments)
-async def simplify_chapter(title, text, language, level, max_tokens, model, dry_run):
+async def simplify_chapter(index, title, text, language, level, max_tokens, model, dry_run):
     """
     Simplify the text to a selected level using the latest OpenAI package.
     """
@@ -84,8 +84,11 @@ async def simplify_chapter(title, text, language, level, max_tokens, model, dry_
     async with asyncio.TaskGroup() as group:
         tasks = [group.create_task(process_chunk(title, chunk, language, instructions, model, dry_run)) for chunk in chunks]
     result = [task.result() for task in tasks]
-    text, usage = dechunkify_text(result, separator)
-    logger.debug(f"\nSimplified text: {text}, usage: {usage}")
+    simplified_text, usage = dechunkify_text(result, separator)
+    logger.debug(
+        f"\nSimplified chapter: {index}, usage: {usage}, "
+        f"length ratio simplified / original: {len(simplified_text)/len(text):.2%}"
+    )
     # try:
     #     response = await client.chat.completions.create(
     #         model=model,  # Choose the best model for your needs. 'gpt-3.5-turbo' is suggested for efficiency and cost.
@@ -114,7 +117,7 @@ async def simplify_chapter(title, text, language, level, max_tokens, model, dry_
     #     text = choice.message.content.strip()
     # except Exception as e:
     #     logger.error(f"Error during API call: {e}")
-    return text, usage
+    return simplified_text, usage
 
 
 @retry(**wait_arguments)
@@ -283,25 +286,26 @@ async def process_document(
     logger.debug(f"\nProcessing item: {index}")
     soup = BeautifulSoup(content, "html.parser")
     # text = soup.get_text()
-    text = md(str(soup.body))
+    text = md(str(soup.body)).strip()
     if save_html:
         with open(os.path.join(html_path, f"{index}_input.html"), "w") as f:
             f.write(content)
         with open(os.path.join(html_path, f"{index}_input.md"), "w") as f:
             f.write(text)
-    simplified_text, usage = await simplify_chapter(title, text, language, level, max_tokens, model, dry_run)
-    if simplified_text:
-        logger.debug(f"\nSimplified: {index}")
-        simplified_content = markdown2.markdown(simplified_text)
-        soup.body.clear()
-        soup.body.append(BeautifulSoup(simplified_content, "html.parser"))
-        simplified_content = str(soup)
-        if save_html:
-            with open(os.path.join(html_path, f"{index}_output.html"), "w") as f:
-                f.write(simplified_content)
-            with open(os.path.join(html_path, f"{index}_output.md"), "w") as f:
-                f.write(simplified_text)
-        # simplified_book.add_item(item)
+    if text:
+        simplified_text, usage = await simplify_chapter(index, title, text, language, level, max_tokens, model, dry_run)
+        if simplified_text:
+            logger.debug(f"\nSimplified: {index}")
+            simplified_content = markdown2.markdown(simplified_text)
+            soup.body.clear()
+            soup.body.append(BeautifulSoup(simplified_content, "html.parser"))
+            simplified_content = str(soup)
+            if save_html:
+                with open(os.path.join(html_path, f"{index}_output.html"), "w") as f:
+                    f.write(simplified_content)
+                with open(os.path.join(html_path, f"{index}_output.md"), "w") as f:
+                    f.write(simplified_text)
+            # simplified_book.add_item(item)
     logger.debug(f"\nProcessed {index} document of {count}.")
     await result_queue.put(index)
     return simplified_content, usage
@@ -338,21 +342,21 @@ def main():
         "--model",
         type=str,
         help="OpenAI model to use. Default is gpt-4-turbo-preview.",
-        default="gpt-4-turbo-preview",
+        default="gpt-4o",
     )
     # price per input token
     parser.add_argument(
         "--pricing-input",
         type=float,
         help="Price per input token in USD",
-        default=10 / (10**6),
+        default=5 / (10**6),
     )
     # price per output token
     parser.add_argument(
         "--pricing-output",
         type=float,
         help="Price per output token in USD",
-        default=30 / (10**6),
+        default=15 / (10**6),
     )
     # answer yes to all questions
     parser.add_argument("--yes", action="store_true", help="Answer yes to all questions.")
